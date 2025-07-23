@@ -1,0 +1,196 @@
+Full Stack Image Cropper Tool
+---
+
+##  1. `index.html` (Frontend UI)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Cropper Tool</title>
+  <style>
+    canvas { border: 1px solid black; }
+    #preview { margin-top: 10px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h2>Upload and Crop Image</h2>
+  <input type="file" id="imageInput" accept="image/*">
+  <br><br>
+  <canvas id="canvas"></canvas>
+  <br>
+  <button id="applyCrop">Apply Crop</button>
+  <div>
+    <h3>Preview:</h3>
+    <canvas id="preview" width="200" height="200"></canvas>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+```
+
+---
+
+##  2. `app.js` (Frontend Logic)
+
+```javascript
+const imageInput = document.getElementById('imageInput');
+const canvas = document.getElementById('canvas');
+const preview = document.getElementById('preview');
+const ctx = canvas.getContext('2d');
+const previewCtx = preview.getContext('2d');
+
+let img = new Image();
+let cropBox = { x: 50, y: 50, width: 100, height: 100 };
+
+imageInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      drawCropBox();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+function drawCropBox() {
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cropBox.x, cropBox.y, cropBox.width, cropBox.height);
+}
+
+document.getElementById('applyCrop').addEventListener('click', () => {
+  const imageData = ctx.getImageData(cropBox.x, cropBox.y, cropBox.width, cropBox.height);
+  preview.width = cropBox.width;
+  preview.height = cropBox.height;
+  previewCtx.putImageData(imageData, 0, 0);
+
+  // Send crop data to backend
+  fetch('http://localhost:5000/api/save-crop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      imageId: 'sample123',
+      x: cropBox.x,
+      y: cropBox.y,
+      width: cropBox.width,
+      height: cropBox.height
+    })
+  }).then(res => res.text()).then(console.log);
+});
+```
+
+---
+
+##  3. `server.js` (Node.js Backend with Express)
+
+```javascript
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const mysql = require('mysql');
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+const db = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: '',       // Use your MySQL password
+  database: 'cropper' // Make sure this DB exists
+});
+
+db.connect(err => {
+  if (err) throw err;
+  console.log("MySQL connected");
+});
+
+app.post('/api/save-crop', (req, res) => {
+  const { imageId, x, y, width, height } = req.body;
+  const sql = 'INSERT INTO crop_data (image_id, x, y, width, height) VALUES (?, ?, ?, ?, ?)';
+  db.query(sql, [imageId, x, y, width, height], (err, result) => {
+    if (err) return res.status(500).send('Error saving crop');
+    res.send('Crop data saved successfully');
+  });
+});
+
+app.listen(5000, () => console.log('Server running on http://localhost:5000'));
+```
+
+---
+
+##  4. MySQL Table Setup (Run in phpMyAdmin / MySQL CLI)
+
+```sql
+CREATE DATABASE IF NOT EXISTS cropper;
+
+USE cropper;
+
+CREATE TABLE crop_data (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  image_id VARCHAR(255),
+  x INT,
+  y INT,
+  width INT,
+  height INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+##  5. Folder Structure
+
+```
+image-cropper-tool/
+│
+├── index.html
+├── app.js
+├── server.js
+└── README.md
+```
+
+---
+
+##  6. `README.md` (Basic)
+
+````markdown
+# Image Cropper Tool (Full Stack)
+
+This tool allows users to upload an image, select a crop region, preview the result, and store crop coordinates on a backend server.
+
+## Technologies
+- Frontend: HTML, Canvas API, JavaScript
+- Backend: Node.js, Express
+- Database: MySQL
+
+## To Run:
+1. Start MySQL and create DB using the provided SQL.
+2. Run backend:
+   ```bash
+   node server.js
+````
+
+3. Open `index.html` in browser.
+
+```
+
+---
+
+Once you're ready, push the above files to a **public GitHub repo** and **share the link in the chat** with the recruiter + confirm with Kiran as instructed.
+
+Let me know if you want me to:
+- Zip and format these files
+- Generate the GitHub README with screenshots
+- Convert this to Django/MongoDB/React, etc.
+
+
